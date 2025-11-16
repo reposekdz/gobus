@@ -1,0 +1,1 @@
+everything must be ready production no mock data, basic feature,placeholder or unreal every things must be real powerfull robust and advanced with powerfull logic and use mysql, nodejs and block chain and start implementing with your iq 100%

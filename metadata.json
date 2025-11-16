@@ -1,0 +1,7 @@
+{
+  "name": "GoBus",
+  "description": "A sleek, modern, and highly intuitive bus booking platform named GoBus, for seamless journeys across Rwanda, featuring a premium design inspired by the nation's vibrant colors.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

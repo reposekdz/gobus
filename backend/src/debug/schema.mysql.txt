@@ -1,0 +1,336 @@
+-- GoBus Platform Database Schema for MySQL
+
+-- Drop tables in reverse order of dependency
+DROP TABLE IF EXISTS `push_subscriptions`;
+DROP TABLE IF EXISTS `seats`;
+DROP TABLE IF EXISTS `wallet_transactions`;
+DROP TABLE IF EXISTS `wallets`;
+DROP TABLE IF EXISTS `boardings`;
+DROP TABLE IF EXISTS `bookings`;
+DROP TABLE IF EXISTS `loyalty_transactions`;
+DROP TABLE IF EXISTS `price_alerts`;
+DROP TABLE IF EXISTS `package_deliveries`;
+DROP TABLE IF EXISTS `bus_charters`;
+DROP TABLE IF EXISTS `lost_and_found`;
+DROP TABLE IF EXISTS `trips`;
+DROP TABLE IF EXISTS `routes`;
+DROP TABLE IF EXISTS `buses`;
+DROP TABLE IF EXISTS `reviews`;
+DROP TABLE IF EXISTS `services`;
+DROP TABLE IF EXISTS `promotions`;
+DROP TABLE IF EXISTS `gallery`;
+DROP TABLE IF EXISTS `companies`;
+DROP TABLE IF EXISTS `users`;
+DROP TABLE IF EXISTS `messages`;
+DROP TABLE IF EXISTS `site_settings`;
+DROP TABLE IF EXISTS `featured_destinations`;
+DROP TABLE IF EXISTS `advertisements`;
+
+
+CREATE TABLE `companies` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) UNIQUE NOT NULL,
+    `description` TEXT,
+    `logo_url` LONGTEXT,
+    `cover_url` LONGTEXT,
+    `contact_email` VARCHAR(255),
+    `contact_phone` VARCHAR(20),
+    `address` TEXT,
+    `owner_id` INT,
+    `status` VARCHAR(50) DEFAULT 'Pending' CHECK (`status` IN ('Active', 'Pending', 'Suspended')),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE `users` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `email` VARCHAR(255) UNIQUE,
+    `password_hash` VARCHAR(255) NOT NULL,
+    `phone_number` VARCHAR(20) UNIQUE,
+    `bio` TEXT,
+    `role` VARCHAR(50) NOT NULL CHECK (`role` IN ('passenger', 'driver', 'agent', 'company', 'admin')),
+    `avatar_url` LONGTEXT,
+    `cover_url` LONGTEXT,
+    `status` VARCHAR(50) DEFAULT 'Active' CHECK (`status` IN ('Active', 'Unavailable', 'On Leave', 'Suspended', 'Pending')),
+    `company_id` INT,
+    `pin` VARCHAR(255),
+    `serial_code` VARCHAR(20) UNIQUE,
+    `location` VARCHAR(255),
+    `commission_rate` DECIMAL(5, 4) DEFAULT 0.05,
+    `loyalty_points` INT DEFAULT 0,
+    `assigned_bus_id` INT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE SET NULL
+);
+
+ALTER TABLE `companies` ADD FOREIGN KEY (`owner_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT;
+
+CREATE TABLE `buses` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `company_id` INT NOT NULL,
+    `plate_number` VARCHAR(15) UNIQUE NOT NULL,
+    `model` VARCHAR(100),
+    `capacity` INT NOT NULL,
+    `amenities` TEXT,
+    `status` VARCHAR(50) DEFAULT 'operational' CHECK (`status` IN ('Operational', 'Maintenance', 'On Route')),
+    `image_url` LONGTEXT,
+    `images_360` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE
+);
+
+ALTER TABLE `users` ADD FOREIGN KEY (`assigned_bus_id`) REFERENCES `buses`(`id`) ON DELETE SET NULL;
+
+CREATE TABLE `routes` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `company_id` INT NOT NULL,
+    `origin` VARCHAR(255) NOT NULL,
+    `destination` VARCHAR(255) NOT NULL,
+    `base_price` DECIMAL(10, 2) NOT NULL,
+    `estimated_duration_minutes` INT NOT NULL,
+    `status` VARCHAR(50) DEFAULT 'active' CHECK (`status` IN ('Active', 'Inactive')),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE,
+    UNIQUE (`company_id`, `origin`, `destination`)
+);
+
+CREATE TABLE `trips` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `route_id` INT NOT NULL,
+    `bus_id` INT NOT NULL,
+    `driver_id` INT NOT NULL,
+    `departure_time` TIMESTAMP NOT NULL,
+    `arrival_time` TIMESTAMP NOT NULL,
+    `status` VARCHAR(50) DEFAULT 'Scheduled' CHECK (`status` IN ('Scheduled', 'Departed', 'Arrived', 'Cancelled', 'Delayed')),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`route_id`) REFERENCES `routes`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`bus_id`) REFERENCES `buses`(`id`) ON DELETE RESTRICT,
+    FOREIGN KEY (`driver_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT
+);
+
+CREATE TABLE `bookings` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `trip_id` INT NOT NULL,
+    `booking_id` VARCHAR(20) UNIQUE NOT NULL,
+    `total_price` DECIMAL(10, 2) NOT NULL,
+    `payment_method` VARCHAR(50) NOT NULL,
+    `status` VARCHAR(50) DEFAULT 'confirmed' CHECK (`status` IN ('Confirmed', 'Cancelled', 'Completed', 'Pending')),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`trip_id`) REFERENCES `trips`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `seats` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `booking_id` INT NOT NULL,
+    `trip_id` INT NOT NULL,
+    `seat_number` VARCHAR(5) NOT NULL,
+    FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`trip_id`) REFERENCES `trips`(`id`) ON DELETE CASCADE,
+    UNIQUE (`trip_id`, `seat_number`)
+);
+
+CREATE TABLE `boardings` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `booking_id` INT NOT NULL,
+    `trip_id` INT NOT NULL,
+    `driver_id` INT NOT NULL,
+    `boarded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`),
+    FOREIGN KEY (`trip_id`) REFERENCES `trips`(`id`),
+    FOREIGN KEY (`driver_id`) REFERENCES `users`(`id`)
+);
+
+CREATE TABLE `wallets` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT UNIQUE NOT NULL,
+    `balance` DECIMAL(12, 2) DEFAULT 0.00,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `wallet_transactions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `wallet_id` INT NOT NULL,
+    `amount` DECIMAL(10, 2) NOT NULL,
+    `type` VARCHAR(50) CHECK (`type` IN ('deposit', 'purchase', 'refund', 'bonus', 'commission', 'transfer_in', 'transfer_out')),
+    `description` TEXT,
+    `related_booking_id` INT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`wallet_id`) REFERENCES `wallets`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`related_booking_id`) REFERENCES `bookings`(`id`)
+);
+
+CREATE TABLE `messages` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `email` VARCHAR(255) NOT NULL,
+    `subject` TEXT,
+    `message` TEXT NOT NULL,
+    `status` VARCHAR(50) DEFAULT 'New' CHECK (`status` IN ('New', 'Read', 'Archived')),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE `site_settings` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `setting_key` VARCHAR(100) UNIQUE NOT NULL,
+    `setting_value` LONGTEXT,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE `featured_destinations` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `from_location` VARCHAR(255) NOT NULL,
+    `to_location` VARCHAR(255) NOT NULL,
+    `price` DECIMAL(10, 2) NOT NULL,
+    `image_data_uri` LONGTEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE `reviews` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `company_id` INT NOT NULL,
+    `rating` INT NOT NULL CHECK (`rating` >= 1 AND `rating` <= 5),
+    `comment` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `services` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `company_id` INT NOT NULL,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `promotions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `company_id` INT,
+    `code` VARCHAR(50) UNIQUE NOT NULL,
+    `description` TEXT,
+    `discount_type` VARCHAR(20) CHECK (`discount_type` IN ('percentage', 'fixed')),
+    `discount_value` DECIMAL(10, 2),
+    `start_date` DATE,
+    `end_date` DATE,
+    `status` VARCHAR(50) DEFAULT 'active' CHECK (`status` IN ('active', 'inactive', 'expired')),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `gallery` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `company_id` INT NOT NULL,
+    `image_url` LONGTEXT NOT NULL,
+    `category` VARCHAR(100),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `lost_and_found` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `item_name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `route_found_on` VARCHAR(255),
+    `date_found` DATE NOT NULL,
+    `status` VARCHAR(50) DEFAULT 'Unclaimed' CHECK (`status` IN ('Unclaimed', 'Claimed')),
+    `reported_by_user_id` INT,
+    `location_stored` VARCHAR(255) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`reported_by_user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `package_deliveries` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `tracking_id` VARCHAR(20) UNIQUE NOT NULL,
+    `sender_id` INT NOT NULL,
+    `recipient_name` VARCHAR(255) NOT NULL,
+    `recipient_phone` VARCHAR(20) NOT NULL,
+    `origin` VARCHAR(255) NOT NULL,
+    `destination` VARCHAR(255) NOT NULL,
+    `package_size` VARCHAR(50) NOT NULL,
+    `weight_kg` DECIMAL(10, 2) NOT NULL,
+    `price` DECIMAL(10, 2) NOT NULL,
+    `trip_id` INT NOT NULL,
+    `status` VARCHAR(50) DEFAULT 'Pending' CHECK (`status` IN ('Pending', 'In Transit', 'Arrived', 'Delivered')),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`sender_id`) REFERENCES `users`(`id`),
+    FOREIGN KEY (`trip_id`) REFERENCES `trips`(`id`)
+);
+
+CREATE TABLE `bus_charters` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `requesting_user_id` INT NOT NULL,
+    `company_id` INT NOT NULL,
+    `origin` VARCHAR(255) NOT NULL,
+    `destination` VARCHAR(255) NOT NULL,
+    `departure_date` DATE NOT NULL,
+    `return_date` DATE,
+    `num_passengers` INT NOT NULL,
+    `reason` TEXT,
+    `status` VARCHAR(50) DEFAULT 'Pending' CHECK (`status` IN ('Pending', 'Quoted', 'Confirmed', 'Completed', 'Cancelled')),
+    `quote_price` DECIMAL(10, 2),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`requesting_user_id`) REFERENCES `users`(`id`),
+    FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`)
+);
+
+CREATE TABLE `price_alerts` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `origin` VARCHAR(255) NOT NULL,
+    `destination` VARCHAR(255) NOT NULL,
+    `initial_price` DECIMAL(10, 2),
+    `status` VARCHAR(50) DEFAULT 'Active' CHECK (`status` IN ('Active', 'Triggered', 'Inactive')),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE(`user_id`, `origin`, `destination`)
+);
+
+CREATE TABLE `loyalty_transactions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `points` INT NOT NULL,
+    `type` VARCHAR(50) CHECK (`type` IN ('earn', 'redeem', 'referral', 'bonus')),
+    `description` TEXT,
+    `related_booking_id` INT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`related_booking_id`) REFERENCES `bookings`(`id`)
+);
+
+CREATE TABLE `push_subscriptions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `endpoint` TEXT NOT NULL,
+    `p256dh` VARCHAR(255),
+    `auth` VARCHAR(255),
+    `platform` VARCHAR(10) NOT NULL COMMENT 'web or mobile',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_endpoint` (`endpoint`(255))
+);
+
+CREATE TABLE `advertisements` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `company_name` VARCHAR(255) NOT NULL,
+    `image_data_uri` LONGTEXT NOT NULL,
+    `link_url` TEXT,
+    `status` VARCHAR(50) DEFAULT 'Active' CHECK (`status` IN ('Active', 'Inactive')),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE INDEX `idx_trips_departure_time` ON `trips`(`departure_time`);
+CREATE INDEX `idx_bookings_user_id` ON `bookings`(`user_id`);
+CREATE INDEX `idx_seats_trip_id` ON `seats`(`trip_id`);
