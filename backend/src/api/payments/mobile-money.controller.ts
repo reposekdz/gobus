@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../../config/database';
-import { logger } from '../../utils/logger';
+import logger from '../../utils/logger';
+import { config } from '../../config';
 
 interface MTNPaymentRequest {
   amount: string;
@@ -77,14 +78,14 @@ export class MobileMoneyController {
 
       // Make request to MTN API
       const mtnResponse = await axios.post(
-        `${process.env.MTN_API_BASE_URL}/collection/v1_0/requesttopay`,
+        `${config.mtn.apiBaseUrl}/collection/v1_0/requesttopay`,
         paymentRequest,
         {
           headers: {
             'Authorization': `Bearer ${mtnApiKey}`,
             'X-Reference-Id': externalId,
-            'X-Target-Environment': process.env.MTN_ENVIRONMENT || 'sandbox',
-            'Ocp-Apim-Subscription-Key': process.env.MTN_COLLECTION_PRIMARY_KEY,
+            'X-Target-Environment': config.mtn.environment,
+            'Ocp-Apim-Subscription-Key': config.mtn.collection.primaryKey,
             'Content-Type': 'application/json'
           }
         }
@@ -368,27 +369,27 @@ export class MobileMoneyController {
   // Helper methods
   private static async getMTNApiUser(): Promise<string> {
     const response = await axios.post(
-      `${process.env.MTN_API_BASE_URL}/v1_0/apiuser`,
+      `${config.mtn.apiBaseUrl}/v1_0/apiuser`,
       {
-        providerCallbackHost: process.env.MTN_CALLBACK_URL
+        providerCallbackHost: config.mtn.callbackUrl
       },
       {
         headers: {
-          'Ocp-Apim-Subscription-Key': process.env.MTN_COLLECTION_PRIMARY_KEY,
+          'Ocp-Apim-Subscription-Key': config.mtn.collection.primaryKey,
           'Content-Type': 'application/json'
         }
       }
     );
-    return process.env.MTN_COLLECTION_USER_ID || '';
+    return config.mtn.collection.userId || '';
   }
 
   private static async getMTNApiKey(apiUser: string): Promise<string> {
     const response = await axios.post(
-      `${process.env.MTN_API_BASE_URL}/v1_0/apiuser/${apiUser}/apikey`,
+      `${config.mtn.apiBaseUrl}/v1_0/apiuser/${apiUser}/apikey`,
       {},
       {
         headers: {
-          'Ocp-Apim-Subscription-Key': process.env.MTN_COLLECTION_PRIMARY_KEY
+          'Ocp-Apim-Subscription-Key': config.mtn.collection.primaryKey
         }
       }
     );
@@ -414,15 +415,15 @@ export class MobileMoneyController {
 
   private static async pollMTNPaymentStatus(externalId: string, paymentId: string): Promise<void> {
     try {
-      const mtnApiKey = await this.getMTNApiKey(process.env.MTN_COLLECTION_USER_ID || '');
+      const mtnApiKey = await this.getMTNApiKey(config.mtn.collection.userId || '');
       
       const response = await axios.get(
-        `${process.env.MTN_API_BASE_URL}/collection/v1_0/requesttopay/${externalId}`,
+        `${config.mtn.apiBaseUrl}/collection/v1_0/requesttopay/${externalId}`,
         {
           headers: {
             'Authorization': `Bearer ${mtnApiKey}`,
-            'X-Target-Environment': process.env.MTN_ENVIRONMENT || 'sandbox',
-            'Ocp-Apim-Subscription-Key': process.env.MTN_COLLECTION_PRIMARY_KEY
+            'X-Target-Environment': config.mtn.environment,
+            'Ocp-Apim-Subscription-Key': config.mtn.collection.primaryKey
           }
         }
       );
