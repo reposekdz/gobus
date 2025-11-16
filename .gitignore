@@ -27,3 +27,4 @@ dist-ssr
 .ai-code-review/
 .env
 .env
+backend/.env
