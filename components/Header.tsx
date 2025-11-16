@@ -24,9 +24,11 @@ const NavLink: React.FC<{ page: Page; currentPage: Page; onNavigate: (page: Page
 
 const DropdownMenu: React.FC<{isOpen: boolean; children: React.ReactNode; className?: string}> = ({isOpen, children, className}) => (
     <div 
-      className={`absolute right-0 mt-3 origin-top-right rounded-xl bg-gradient-to-br from-sky-400 via-blue-500 to-indigo-600 dark:from-sky-600 dark:via-blue-700 dark:to-indigo-800 shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-300 ease-in-out text-white ${className} ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}
+      className={`absolute right-0 mt-3 origin-top-right rounded-2xl bg-gradient-to-br from-sky-400/95 via-blue-500/95 to-indigo-600/95 dark:from-sky-600/95 dark:via-blue-700/95 dark:to-indigo-800/95 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-white/20 ring-1 ring-black/10 focus:outline-none transition-all duration-500 ease-out text-white ${className} ${isOpen ? 'opacity-100 scale-100 translate-y-0 rotate-0' : 'opacity-0 scale-90 -translate-y-4 rotate-[-2deg] pointer-events-none'}`}
     >
-      {children}
+      {/* Animated Gradient Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-purple-500/10 rounded-2xl animate-pulse opacity-50"></div>
+      <div className="relative z-10">{children}</div>
     </div>
 );
 
@@ -154,26 +156,45 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogout, them
           <NavLink page="bookingSearch" currentPage={currentPage} onNavigate={onNavigate}>{t('nav_booking')}</NavLink>
           <NavLink page="companies" currentPage={currentPage} onNavigate={onNavigate}>{t('nav_companies')}</NavLink>
           
+           {/* Advanced Services Dropdown Menu */}
            <div className="relative" ref={servicesRef}>
               <button 
                   onClick={() => setIsServicesOpen(!isServicesOpen)}
-                  className={`px-4 py-2 text-sm font-semibold transition-colors duration-200 flex items-center ${currentPage.toLowerCase().includes('service') ? 'text-yellow-300' : 'text-white hover:text-yellow-200'}`}
+                  className={`px-4 py-2 text-sm font-semibold transition-all duration-300 flex items-center hover:scale-105 active:scale-95 relative group overflow-hidden rounded-lg ${currentPage.toLowerCase().includes('service') ? 'text-yellow-300' : 'text-white hover:text-yellow-200'}`}
               >
-                  {t('nav_services')}
-                  <ChevronDownIcon className={`w-4 h-4 ml-1 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} />
+                  {/* Hover Background */}
+                  <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300 rounded-lg"></div>
+                  
+                  <span className="relative z-10">{t('nav_services')}</span>
+                  <ChevronDownIcon className={`w-4 h-4 ml-1 transition-transform duration-500 ${isServicesOpen ? 'rotate-180' : ''}`} />
               </button>
-              <DropdownMenu isOpen={isServicesOpen} className="w-64">
-                  <div className="py-2">
-                      {servicesMenuItems.map(item => (
+              
+              <DropdownMenu isOpen={isServicesOpen} className="w-72">
+                  <div className="p-3">
+                      <div className="text-xs font-bold uppercase tracking-wider opacity-80 px-3 py-2 mb-2">
+                        {t('nav_services')}
+                      </div>
+                      <div className="grid grid-cols-1 gap-1">
+                      {servicesMenuItems.map((item, index) => (
                           <button
                               key={item.page}
                               onClick={() => { onNavigate(item.page as Page); setIsServicesOpen(false); }}
-                              className="w-full text-left px-4 py-2 text-sm hover:bg-white/20 flex items-center"
+                              className="w-full text-left px-4 py-3 text-sm hover:bg-white/20 rounded-xl flex items-center transition-all duration-300 group relative overflow-hidden"
+                              style={{ animationDelay: `${index * 30}ms` }}
                           >
-                              <item.icon className="w-5 h-5 mr-3 opacity-80"/>
-                              {item.label}
+                              {/* Animated Background */}
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                              
+                              {/* Icon */}
+                              <div className="relative z-10 p-2 bg-gradient-to-br from-white/20 to-white/10 rounded-lg mr-3 group-hover:scale-110 transition-transform">
+                                  <item.icon className="w-5 h-5"/>
+                              </div>
+                              
+                              {/* Label */}
+                              <span className="relative z-10 font-medium group-hover:translate-x-1 transition-transform">{item.label}</span>
                           </button>
                       ))}
+                      </div>
                   </div>
               </DropdownMenu>
           </div>
@@ -183,18 +204,54 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogout, them
         </nav>
 
         <div className="flex items-center space-x-2 sm:space-x-4">
+           {/* Advanced Language Switcher - Desktop */}
            <div className="relative hidden sm:block" ref={langRef}>
-            <button onClick={() => setIsLangOpen(!isLangOpen)} className="flex items-center space-x-1 p-2 rounded-full hover:bg-white/10">
-              <LanguageIcon className="w-5 h-5" />
-              <span className="text-xs font-bold hidden sm:inline">{currentLang?.code}</span>
-              <ChevronDownIcon className={`w-4 h-4 transition-transform ${isLangOpen ? 'rotate-180' : ''}`} />
+            <button 
+              onClick={() => setIsLangOpen(!isLangOpen)} 
+              className="flex items-center space-x-2 px-3 py-2 rounded-xl hover:bg-white/10 transition-all duration-300 hover:scale-105 active:scale-95 group relative overflow-hidden"
+            >
+              {/* Animated Background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+              
+              {/* Icon & Text */}
+              <div className="relative z-10 flex items-center space-x-2">
+                <div className="p-1 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg shadow-lg">
+                  <LanguageIcon className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-2xl">{currentLang?.flag}</span>
+                <span className="text-xs font-bold hidden md:inline bg-gradient-to-r from-yellow-200 to-white bg-clip-text text-transparent">{currentLang?.code}</span>
+                <ChevronDownIcon className={`w-4 h-4 transition-transform duration-500 ${isLangOpen ? 'rotate-180' : ''}`} />
+              </div>
             </button>
-             <DropdownMenu isOpen={isLangOpen} className="w-48">
-                <div className="py-1">
-                    {languages.map(lang => (
-                      <button key={lang.code} onClick={() => selectLanguage(lang)} className="flex items-center w-full text-left px-4 py-2 text-sm text-white hover:bg-white/20">
-                        <span className="mr-3 text-lg">{lang.flag}</span>
-                        {lang.name}
+            
+            <DropdownMenu isOpen={isLangOpen} className="w-56">
+                <div className="p-2">
+                    <div className="text-xs font-bold uppercase tracking-wider opacity-80 px-3 py-2 mb-1">
+                      Hitamo Ururimi / Select Language
+                    </div>
+                    {languages.map((lang, index) => (
+                      <button 
+                        key={lang.code} 
+                        onClick={() => selectLanguage(lang)} 
+                        className={`flex items-center w-full text-left px-4 py-3 text-sm text-white hover:bg-white/20 rounded-xl transition-all duration-300 group relative overflow-hidden mb-1 ${language === lang.code ? 'bg-white/20 ring-2 ring-yellow-300' : ''}`}
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        {/* Hover Effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                        
+                        {/* Content */}
+                        <div className="relative z-10 flex items-center w-full">
+                          <span className="mr-3 text-2xl group-hover:scale-125 transition-transform duration-300">{lang.flag}</span>
+                          <div className="flex-1">
+                            <div className="font-bold">{lang.name}</div>
+                            <div className="text-xs opacity-75">{lang.code}</div>
+                          </div>
+                          {language === lang.code && (
+                            <svg className="w-5 h-5 text-yellow-300 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
                       </button>
                     ))}
                 </div>
